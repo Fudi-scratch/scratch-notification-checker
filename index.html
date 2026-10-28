@@ -61,7 +61,7 @@
     </div>
 
     <div class="notes">
-      <p><strong>仕組み：</strong>Scratchの公開APIで通知件数だけを約60秒ごとに確認します。通知の本文・送信者・パスワードは取得しません。</p>
+      <p><strong>仕組み：</strong>Scratchの公開APIで通知件数だけを約10分ごとに確認します。通知の本文・送信者・パスワードは取得しません。</p>
       <p><strong>注意：</strong>このページを閉じる、またはブラウザを終了するとチェックは止まります。初回は現在の件数を基準にするため、すでにある通知は鳴りません。</p>
       <p>通知が表示されない場合は、Chromeのサイト通知設定で、このページからの通知を許可してください。</p>
       <p><a href="https://scratch.mit.edu/messages/" target="_blank" rel="noopener">Scratchの通知一覧を開く</a></p>
@@ -82,7 +82,7 @@
   const statusDot = $('statusDot');
   const countDisplay = $('count');
   const nextCheckDisplay = $('nextCheck');
-  const INTERVAL_MS = 60_000;
+  const INTERVAL_MS = 600_000;
   let timer = null;
   let countdownTimer = null;
   let activeUsername = '';
@@ -233,8 +233,11 @@
       countDisplay.textContent = String(count);
       scheduleNextCheck();
     } catch (error) {
-      setStatus(`開始できませんでした。ユーザー名やネットワークを確認してください。詳細：${error.message}`, 'error');
-      stop();
+      // 初回のAPIアクセスに失敗しても監視状態を解除せず、10分後に再試行する。
+      if (running) {
+        setStatus(`最初の確認に失敗しました。監視状態は維持し、10分後に再試行します。ユーザー名・ネットワーク・Scratch APIの状態を確認してください。詳細：${error.message}`, 'error');
+        scheduleNextCheck();
+      }
     }
   }
 
