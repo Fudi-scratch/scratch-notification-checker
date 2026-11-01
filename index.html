@@ -3,265 +3,384 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101827">
+  <meta name="theme-color" content="#2f6fdb">
   <title>Scratch 通知チェッカー</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
   <style>
-    :root { color-scheme: dark; --bg:#0b1120; --panel:#111b2d; --line:#2a3951; --text:#eef4ff; --muted:#a7b4ca; --accent:#818cf8; --good:#86efac; --bad:#fca5a5; }
+    :root {
+      color-scheme: light dark;
+      --bg:#eaf1fb; --panel:#ffffff; --field:#f4f7fd; --ink:#1c2442; --muted:#5b6683; --line:#d6e0f0;
+      --hero:#2f6fdb; --hero-idle:#5d6b8a; --orange:#ff8c1a; --orange-ink:#1c2442;
+      --good:#0b8f6a; --bad:#c93a3f; --focus:#2f6fdb;
+      --font:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic UI",system-ui,sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#0e1427; --panel:#161e38; --field:#0e1530; --ink:#eaf0ff; --muted:#9fabc8; --line:#2a3558;
+        --hero:#2f6fdb; --hero-idle:#36425f; --good:#4fd8a8; --bad:#ff8b8f; --focus:#8ab4ff;
+      }
+    }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; padding:24px 14px; display:flex; align-items:center; justify-content:center; background:radial-gradient(ellipse at top,#172443 0%,var(--bg) 58%); color:var(--text); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
-    main { width:min(100%,620px); }
-    .card { background:rgba(17,27,45,.96); border:1px solid var(--line); border-radius:22px; padding:clamp(20px,5vw,32px); box-shadow:0 20px 70px #0005; }
-    .icon { width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:#4f46e5;font-size:29px;box-shadow:0 8px 25px #4f46e540; }
-    h1 { font-size:clamp(24px,5vw,32px); line-height:1.2; margin:15px 0 8px; }
-    .sub,.muted { color:var(--muted); }
-    .pill { display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--line);border-radius:99px;font-size:13px;color:var(--muted); }
-    .dot { width:8px;height:8px;border-radius:50%;background:#64748b; }
-    .dot.active { background:var(--good);box-shadow:0 0 0 4px #86efac1a; }
-    label { display:block;font-weight:650;margin:22px 0 7px; }
-    input { display:block;width:100%;padding:13px 14px;border-radius:12px;border:1px solid #40516d;background:#0b1322;color:var(--text);font:inherit;outline:none; }
-    input:focus { border-color:var(--accent);box-shadow:0 0 0 3px #818cf833; }
-    .actions { display:flex;flex-wrap:wrap;gap:10px;margin-top:14px; }
-    button { appearance:none;border:1px solid transparent;border-radius:12px;padding:11px 15px;font:inherit;font-weight:700;cursor:pointer; }
-    button:disabled { opacity:.4;cursor:not-allowed; }
-    .primary { background:#6366f1;color:white;flex:1;min-width:170px; }
-    .secondary { background:#1b2940;color:var(--text);border-color:#35445c; }
-    .status { margin-top:18px;padding:13px 14px;background:#0b1322;border:1px solid var(--line);border-radius:12px;min-height:50px; }
-    .stats { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px; }
-    .stat { padding:14px;background:#0b1322;border:1px solid var(--line);border-radius:12px; }
-    .stat strong { display:block;font-size:26px;line-height:1.2;margin-top:3px; }
-    .stat span { color:var(--muted);font-size:13px; }
-    .notes { margin-top:22px;padding-top:18px;border-top:1px solid var(--line);font-size:14px;color:var(--muted); }
-    .notes p { margin:8px 0; }
-    a { color:#a5b4fc; }
-    .small { font-size:12px;color:var(--muted);margin-top:18px; }
-    .success { color:var(--good); }.error { color:var(--bad); }
-    @media (max-width:420px) { .actions button { width:100%; } .stats { grid-template-columns:1fr 1fr; } }
+    html { -webkit-text-size-adjust:100%; }
+    body { margin:0; min-height:100vh; padding:20px 14px 40px; background:var(--bg); color:var(--ink); font:500 16px/1.7 var(--font); }
+    main { width:min(100%,560px); margin:0 auto; display:grid; gap:14px; }
+
+    .top { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:4px 2px; }
+    h1 { margin:0; font-size:clamp(20px,5vw,24px); line-height:1.3; font-weight:900; }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:4px 12px; border-radius:99px; background:var(--panel); border:1px solid var(--line); font-size:13px; font-weight:700; color:var(--muted); white-space:nowrap; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#94a0ba; }
+    .pill.on { color:var(--good); }
+    .pill.on .dot { background:var(--good); box-shadow:0 0 0 4px color-mix(in srgb, var(--good) 22%, transparent); }
+
+    .hero { background:var(--hero-idle); color:#fff; border-radius:28px; padding:26px 22px 22px; text-align:center; transition:background .3s; }
+    .hero[data-state="on"] { background:var(--hero); }
+    .bell { width:44px; height:44px; margin:0 auto; display:block; transform-origin:50% 8%; }
+    .bell.ring { animation:ring 1.1s ease-in-out 3; }
+    @keyframes ring { 0%,100%{transform:rotate(0)} 15%{transform:rotate(16deg)} 30%{transform:rotate(-14deg)} 45%{transform:rotate(10deg)} 60%{transform:rotate(-8deg)} 75%{transform:rotate(4deg)} }
+    .num { font-size:clamp(64px,22vw,96px); line-height:1.05; font-weight:900; letter-spacing:-.02em; margin-top:6px; font-variant-numeric:tabular-nums; }
+    .num small { font-size:.28em; font-weight:700; margin-left:6px; letter-spacing:0; }
+    .hero p { margin:0; }
+    .hero .label { font-weight:700; opacity:.92; }
+    .hero .next { margin-top:14px; display:inline-block; padding:5px 16px; border-radius:99px; background:rgba(255,255,255,.18); font-size:14px; font-weight:700; }
+    .hero .next b { font-variant-numeric:tabular-nums; }
+
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:20px; }
+    .panel h2 { margin:0 0 10px; font-size:16px; font-weight:900; }
+    label { display:block; font-weight:700; font-size:14px; margin:0 0 6px; }
+    .fields { display:grid; grid-template-columns:1fr 150px; gap:12px; }
+    input, select { width:100%; padding:12px 14px; border-radius:14px; border:1.5px solid var(--line); background:var(--field); color:var(--ink); font:inherit; }
+    input:disabled, select:disabled { opacity:.55; }
+    :is(input,select,button,summary):focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    button { appearance:none; border:1.5px solid transparent; border-radius:14px; padding:12px 18px; font:inherit; font-weight:900; cursor:pointer; }
+    button:disabled { opacity:.4; cursor:not-allowed; }
+    .primary { background:var(--orange); color:var(--orange-ink); flex:1 1 200px; }
+    .primary:not(:disabled):active { transform:translateY(1px); }
+    .secondary { background:transparent; color:var(--ink); border-color:var(--line); }
+    .status { margin:16px 0 0; padding:12px 14px; border-radius:14px; background:var(--field); border-left:5px solid var(--line); font-size:15px; }
+    .status.success { border-left-color:var(--good); }
+    .status.error { border-left-color:var(--bad); }
+    .perm { margin:10px 2px 0; font-size:13px; color:var(--muted); }
+
+    ol { list-style:none; margin:0; padding:0; display:grid; gap:2px; }
+    li { display:grid; grid-template-columns:70px 1fr; gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:14px; }
+    li:first-child { border-top:0; }
+    li time { color:var(--muted); font-variant-numeric:tabular-nums; }
+    li.success span { color:var(--good); } li.error span { color:var(--bad); }
+    .empty { color:var(--muted); font-size:14px; margin:0; }
+
+    details { background:var(--panel); border:1px solid var(--line); border-radius:22px; padding:6px 20px; }
+    summary { cursor:pointer; font-weight:900; padding:12px 0; }
+    details p { margin:0 0 12px; font-size:14px; color:var(--muted); }
+    a { color:var(--focus); }
+    .foot { text-align:center; font-size:12px; color:var(--muted); margin:4px 0 0; }
+
+    @media (max-width:440px) { .fields { grid-template-columns:1fr; } .actions button { flex:1 1 100%; } li { grid-template-columns:62px 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .bell.ring { animation:none; } .hero { transition:none; } }
   </style>
 </head>
 <body>
 <main>
-  <section class="card" aria-labelledby="title">
-    <div class="icon" aria-hidden="true">🔔</div>
-    <h1 id="title">Scratch 通知チェッカー</h1>
-    <p class="sub">拡張機能・デベロッパーモード不要。通知数が増えたらChromeにお知らせします。</p>
-    <div class="pill"><span id="statusDot" class="dot"></span><span id="statusLabel">停止中</span></div>
+  <header class="top">
+    <h1>Scratch 通知チェッカー</h1>
+    <span class="pill" id="pill"><i class="dot"></i><span id="pillText">停止中</span></span>
+  </header>
 
-    <label for="username">Scratchユーザー名</label>
-    <input id="username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="100" placeholder="例：scratchuser123">
+  <section class="hero" id="hero" data-state="idle" aria-live="polite">
+    <svg id="bell" class="bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    <div class="num"><span id="count">—</span><small>件</small></div>
+    <p class="label">いまの通知数</p>
+    <p class="next">次の確認まで <b id="nextCheck">—</b></p>
+  </section>
+
+  <section class="panel">
+    <div class="fields">
+      <div>
+        <label for="username">Scratchユーザー名</label>
+        <input id="username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="100" placeholder="例：scratchuser123">
+      </div>
+      <div>
+        <label for="interval">確認の間隔</label>
+        <select id="interval">
+          <option value="60">1分ごと</option>
+          <option value="300">5分ごと</option>
+          <option value="600" selected>10分ごと</option>
+          <option value="1800">30分ごと</option>
+        </select>
+      </div>
+    </div>
     <div class="actions">
       <button id="startBtn" class="primary">通知チェックを開始</button>
       <button id="stopBtn" class="secondary" disabled>停止</button>
       <button id="testBtn" class="secondary">通知テスト</button>
     </div>
-
-    <div id="statusBox" class="status" role="status" aria-live="polite">ユーザー名を入力して開始してください。</div>
-    <div class="stats">
-      <div class="stat"><span>現在の通知数</span><strong id="count">—</strong></div>
-      <div class="stat"><span>次の確認</span><strong id="nextCheck">—</strong></div>
-    </div>
-
-    <div class="notes">
-      <p><strong>仕組み：</strong>Scratchの公開APIで通知件数だけを約10分ごとに確認します。通知の本文・送信者・パスワードは取得しません。</p>
-      <p><strong>注意：</strong>このページを閉じる、またはブラウザを終了するとチェックは止まります。初回は現在の件数を基準にするため、すでにある通知は鳴りません。</p>
-      <p>通知が表示されない場合は、Chromeのサイト通知設定で、このページからの通知を許可してください。</p>
-      <p><a href="https://scratch.mit.edu/messages/" target="_blank" rel="noopener">Scratchの通知一覧を開く</a></p>
-    </div>
-    <p class="small">非公式ツールです。Scratchとの連携が変更された場合、動作しなくなることがあります。</p>
+    <p id="statusBox" class="status" role="status" aria-live="polite">ユーザー名を入力して「通知チェックを開始」を押してください。</p>
+    <p class="perm" id="permLine"></p>
   </section>
+
+  <section class="panel">
+    <h2>確認の記録</h2>
+    <p class="empty" id="logEmpty">まだ確認していません。</p>
+    <ol id="log"></ol>
+  </section>
+
+  <details>
+    <summary>使い方と注意</summary>
+    <p>Scratchの公開APIで、通知の「件数」だけを確認します。通知の本文・送信者・パスワードは取得しません。</p>
+    <p>初回は現在の件数を基準にするので、すでにある通知では鳴りません。件数が増えたときだけ、ブラウザ通知とお知らせ音でお知らせします。</p>
+    <p>このページを開いたままにしてください。タブを閉じる、ブラウザを終了する、パソコンがスリープするとチェックは止まります（復帰すると自動で再確認します）。</p>
+    <p>通知が出ないときは、ブラウザのサイト設定でこのページの通知を「許可」にしてください。</p>
+    <p><a href="https://scratch.mit.edu/messages/" target="_blank" rel="noopener">Scratchの通知一覧を開く</a></p>
+  </details>
+  <p class="foot">非公式ツールです。Scratch側の仕様が変わると動かなくなることがあります。</p>
 </main>
+
 <script>
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const usernameInput = $('username');
-  const startBtn = $('startBtn');
-  const stopBtn = $('stopBtn');
-  const testBtn = $('testBtn');
-  const statusBox = $('statusBox');
-  const statusLabel = $('statusLabel');
-  const statusDot = $('statusDot');
-  const countDisplay = $('count');
-  const nextCheckDisplay = $('nextCheck');
-  const INTERVAL_MS = 600_000;
-  let timer = null;
-  let countdownTimer = null;
-  let activeUsername = '';
-  let lastCount = null;
-  let inFlight = false;
-  let running = false;
-  let nextCheckAt = null;
+  const el = {
+    user:$('username'), interval:$('interval'), start:$('startBtn'), stop:$('stopBtn'), test:$('testBtn'),
+    status:$('statusBox'), pill:$('pill'), pillText:$('pillText'), hero:$('hero'), bell:$('bell'),
+    count:$('count'), next:$('nextCheck'), perm:$('permLine'), log:$('log'), logEmpty:$('logEmpty')
+  };
+  const BASE_TITLE = document.title;
+  const MESSAGES_URL = 'https://scratch.mit.edu/messages/';
 
-  function setStatus(message, kind = '') {
-    statusBox.textContent = message;
-    statusBox.className = 'status' + (kind ? ' ' + kind : '');
+  let running = false, inFlight = false;
+  let activeUser = '', lastCount = null, nextCheckAt = null;
+  let audioCtx = null, swReg = null, ticker = null, tickWorker = null;
+
+  /* ---------- 保存 ---------- */
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch { /* 保存できなくても動作は続ける */ } }
+  };
+  const countKey = (n) => 'scratchNotifierCount:' + n.toLowerCase();
+
+  /* ---------- 表示 ---------- */
+  function setStatus(msg, kind = '') { el.status.textContent = msg; el.status.className = 'status' + (kind ? ' ' + kind : ''); }
+  function setRunning(on) {
+    running = on;
+    el.start.disabled = on; el.stop.disabled = !on;
+    el.user.disabled = on; el.interval.disabled = on;
+    el.pill.classList.toggle('on', on);
+    el.pillText.textContent = on ? '監視中' : '停止中';
+    el.hero.dataset.state = on ? 'on' : 'idle';
   }
-  function setRunning(isRunning) {
-    running = isRunning;
-    startBtn.disabled = isRunning;
-    stopBtn.disabled = !isRunning;
-    usernameInput.disabled = isRunning;
-    statusDot.classList.toggle('active', isRunning);
-    statusLabel.textContent = isRunning ? '監視中' : '停止中';
+  function clock(d = new Date()) { return d.toLocaleTimeString('ja-JP', { hour12:false }); }
+  function addLog(text, kind = '') {
+    const li = document.createElement('li');
+    if (kind) li.className = kind;
+    const t = document.createElement('time'); t.textContent = clock();
+    const s = document.createElement('span'); s.textContent = text;
+    li.append(t, s);
+    el.log.prepend(li);
+    while (el.log.children.length > 8) el.log.lastChild.remove();
+    el.logEmpty.hidden = true;
   }
-  function storageKey(name) { return 'scratchNotifierCount:' + name.toLowerCase(); }
-  function getSavedCount(name) {
+  function fmt(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+  function renderPerm() {
+    if (!('Notification' in window)) { el.perm.textContent = '通知：このブラウザは対応していません（ページ内の表示と音でお知らせします）'; return; }
+    const p = Notification.permission;
+    el.perm.textContent = '通知：' + (p === 'granted' ? '許可済み' : p === 'denied' ? 'ブロック中（アドレスバーの鍵アイコンから許可に変更してください）' : 'まだ許可されていません（開始時に確認します）');
+  }
+  function ringBell() {
+    el.bell.classList.remove('ring'); void el.bell.getBoundingClientRect(); el.bell.classList.add('ring');
+    setTimeout(() => el.bell.classList.remove('ring'), 3600);
+  }
+  function setTitle(count) { document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE; }
+
+  /* ---------- 音 ---------- */
+  function prepareAudio() {
     try {
-      const value = localStorage.getItem(storageKey(name));
-      if (value === null) return null;
-      const parsed = Number(value);
-      return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-    } catch { return null; }
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!audioCtx && AC) audioCtx = new AC();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    } catch { /* 音が使えなくても通知は動く */ }
   }
-  function saveCount(name, count) {
-    try { localStorage.setItem(storageKey(name), String(count)); } catch { /* storage may be disabled */ }
+  function beep() {
+    if (!audioCtx) return;
+    try {
+      const t0 = audioCtx.currentTime;
+      [880, 1175].forEach((freq, i) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t0 + i * 0.18);
+        g.gain.exponentialRampToValueAtTime(0.18, t0 + i * 0.18 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.18 + 0.28);
+        o.connect(g).connect(audioCtx.destination);
+        o.start(t0 + i * 0.18); o.stop(t0 + i * 0.18 + 0.3);
+      });
+    } catch { /* 無視 */ }
   }
+
+  /* ---------- ブラウザ通知 ---------- */
+  async function registerSW() {
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+    try { swReg = await navigator.serviceWorker.register('./sw.js'); }
+    catch { swReg = null; /* sw.js が無くても通常の通知で動く */ }
+  }
+  async function notify(title, body) {
+    beep(); ringBell();
+    if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+    const opts = { body, tag:'scratch-messages', renotify:true, data:{ url:MESSAGES_URL } };
+    // スマホのChromeは new Notification() が使えないため、Service Worker経由を先に試す
+    try {
+      const reg = swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
+      if (reg && reg.showNotification) { await reg.showNotification(title, opts); return true; }
+    } catch { /* 次の方法へ */ }
+    try {
+      const n = new Notification(title, opts);
+      n.onclick = () => { try { window.focus(); } catch {} window.open(MESSAGES_URL, '_blank', 'noopener'); n.close(); };
+      return true;
+    } catch { return false; }
+  }
+
+  /* ---------- Scratch API ---------- */
   async function fetchCount(name) {
-    const url = `https://api.scratch.mit.edu/users/${encodeURIComponent(name)}/messages/count/?_=${Date.now()}`;
-    const response = await fetch(url, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
-    if (!response.ok) throw new Error(`Scratch APIからHTTP ${response.status}が返されました。`);
-    const data = await response.json();
-    const count = Number(data && data.count);
-    if (!Number.isFinite(count) || count < 0) throw new Error('通知数を読み取れませんでした。ユーザー名を確認してください。');
-    return count;
+    // 余計なヘッダーやcacheオプションは付けない（CORSのプリフライトを避けるため）
+    const url = `https://api.scratch.mit.edu/users/${encodeURIComponent(name)}/messages/count?t=${Date.now()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Scratch APIがHTTP ${res.status}を返しました`);
+    const data = await res.json();
+    const n = Number(data && data.count);
+    if (!Number.isFinite(n) || n < 0) throw new Error('通知数を読み取れませんでした。ユーザー名を確認してください');
+    return n;
   }
-  function notify(title, body) {
-    if (!('Notification' in window)) {
-      setStatus('このブラウザはデスクトップ通知に対応していません。', 'error');
-      return;
-    }
-    if (Notification.permission !== 'granted') {
-      setStatus('通知権限がありません。ブラウザのサイト設定で通知を許可してください。', 'error');
-      return;
-    }
-    const n = new Notification(title, { body, tag: 'scratch-notifier-' + Date.now() });
-    n.onclick = () => {
-      try { window.focus(); } catch {}
-      window.open('https://scratch.mit.edu/messages/', '_blank', 'noopener');
-      n.close();
-    };
+  function explain(err) {
+    if (err instanceof TypeError) return 'Scratchに接続できませんでした。ネットワークを確認し、広告ブロッカーなどが api.scratch.mit.edu を止めていないか確認してください';
+    return err.message;
   }
-  async function checkCount(isFirstCheck = false) {
+
+  /* ---------- チェック本体 ---------- */
+  async function runCheck() {
     if (!running || inFlight) return;
     inFlight = true;
+    el.next.textContent = '確認中…';
     try {
-      const count = await fetchCount(activeUsername);
+      const count = await fetchCount(activeUser);
       if (!running) return;
-      const oldCount = lastCount;
+      const old = lastCount;
       lastCount = count;
-      saveCount(activeUsername, count);
-      countDisplay.textContent = String(count);
+      store.set(countKey(activeUser), String(count));
+      el.count.textContent = String(count);
+      setTitle(count);
 
-      if (oldCount === null) {
-        setStatus(`監視を開始しました。現在の通知数は ${count} 件です。`, 'success');
-      } else if (count > oldCount) {
-        const added = count - oldCount;
-        setStatus(`新しい通知を検知しました（${added}件増加、現在${count}件）。`, 'success');
-        notify('Scratchに新しい通知があります', `${added}件増えました（現在の通知数：${count}件）。クリックして通知一覧を開けます。`);
-      } else if (count < oldCount) {
-        setStatus(`通知数が ${count} 件になりました。引き続き確認しています。`, 'success');
-      } else if (!isFirstCheck) {
-        setStatus(`確認済みです。新着はありません（通知数：${count}件）。`, 'success');
+      if (old === null) {
+        setStatus(`監視を開始しました。いまの通知数は ${count} 件です。`, 'success');
+        addLog(`開始：${count}件`, 'success');
+      } else if (count > old) {
+        const added = count - old;
+        setStatus(`新しい通知が ${added} 件あります（合計 ${count} 件）。`, 'success');
+        addLog(`${added}件増えました（合計${count}件）`, 'success');
+        const ok = await notify('Scratchに新しい通知があります', `${added}件増えました（合計 ${count} 件）`);
+        if (!ok) setStatus(`新しい通知が ${added} 件あります（合計 ${count} 件）。ブラウザ通知は出せなかったため、ページ内でお知らせしています。`, 'success');
+      } else if (count < old) {
+        setStatus(`通知数が ${count} 件になりました。引き続き確認します。`, 'success');
+        addLog(`${count}件に減りました`);
+      } else {
+        setStatus(`新着はありません（通知数：${count}件）。`, 'success');
+        addLog(`変化なし：${count}件`);
       }
-    } catch (error) {
-      if (running) setStatus(`確認できませんでした。接続を確認して次回もう一度試します。詳細：${error.message}`, 'error');
+    } catch (err) {
+      if (running) {
+        const msg = explain(err);
+        setStatus(`確認できませんでした。次の確認でもう一度試します。\n${msg}`, 'error');
+        addLog(`失敗：${msg}`, 'error');
+      }
     } finally {
       inFlight = false;
-      if (running) scheduleNextCheck();
-    }
-  }
-  function scheduleNextCheck() {
-    clearTimeout(timer);
-    clearInterval(countdownTimer);
-    nextCheckAt = Date.now() + INTERVAL_MS;
-    timer = setTimeout(() => checkCount(false), INTERVAL_MS);
-    countdownTimer = setInterval(() => {
-      if (!running || nextCheckAt === null) {
-        nextCheckDisplay.textContent = '—';
-        return;
-      }
-      const seconds = Math.max(0, Math.ceil((nextCheckAt - Date.now()) / 1000));
-      nextCheckDisplay.textContent = `${seconds}秒`;
-    }, 1000);
-  }
-  function stop() {
-    clearTimeout(timer); clearInterval(countdownTimer);
-    timer = null; countdownTimer = null; nextCheckAt = null;
-    setRunning(false);
-    nextCheckDisplay.textContent = '—';
-    setStatus('監視を停止しました。');
-  }
-  async function start() {
-    if (running) return;
-    const name = usernameInput.value.trim();
-    if (!name) {
-      setStatus('Scratchユーザー名を入力してください。', 'error');
-      usernameInput.focus();
-      return;
-    }
-    if (!('Notification' in window)) {
-      setStatus('このブラウザは通知APIに対応していません。別のブラウザを試してください。', 'error');
-      return;
-    }
-    if (!window.isSecureContext) {
-      setStatus('通知機能にはHTTPSのページが必要です。GitHub Pagesのhttps://で開いてください。', 'error');
-      return;
-    }
-    let permission = Notification.permission;
-    if (permission === 'default') {
-      try { permission = await Notification.requestPermission(); }
-      catch { permission = Notification.permission; }
-    }
-    activeUsername = name;
-    lastCount = getSavedCount(name);
-    setRunning(true);
-    countDisplay.textContent = '…';
-    setStatus('Scratchの通知数を確認しています…');
-    try {
-      const count = await fetchCount(name);
-      if (!running) return;
-      if (lastCount !== null && count > lastCount && permission === 'granted') {
-        const added = count - lastCount;
-        notify('Scratchに新しい通知があります', `前回より${added}件増えました（現在の通知数：${count}件）。`);
-        setStatus(`前回の確認後に ${added} 件増えていました。監視を開始しました。`, 'success');
-      } else {
-        setStatus(permission === 'granted'
-          ? `監視を開始しました。現在の通知数は ${count} 件です。`
-          : '通知チェックは動きますが、ブラウザ通知が許可されていません。サイト設定で通知を許可してください。', permission === 'granted' ? 'success' : 'error');
-      }
-      lastCount = count;
-      saveCount(name, count);
-      countDisplay.textContent = String(count);
-      scheduleNextCheck();
-    } catch (error) {
-      // 初回のAPIアクセスに失敗しても監視状態を解除せず、10分後に再試行する。
-      if (running) {
-        setStatus(`最初の確認に失敗しました。監視状態は維持し、10分後に再試行します。ユーザー名・ネットワーク・Scratch APIの状態を確認してください。詳細：${error.message}`, 'error');
-        scheduleNextCheck();
-      }
+      if (running) nextCheckAt = Date.now() + Number(el.interval.value) * 1000;
     }
   }
 
-  startBtn.addEventListener('click', start);
-  stopBtn.addEventListener('click', stop);
-  testBtn.addEventListener('click', async () => {
-    if (!('Notification' in window)) {
-      setStatus('このブラウザは通知APIに対応していません。', 'error');
-      return;
+  /* ---------- タイマー（バックグラウンドでも止まりにくくする） ---------- */
+  function tick() {
+    if (!running || inFlight || nextCheckAt === null) return;
+    const rest = nextCheckAt - Date.now();
+    if (rest <= 0) runCheck(); else el.next.textContent = fmt(rest);
+  }
+  function startTicker() {
+    stopTicker();
+    try {
+      const src = 'setInterval(function(){postMessage(1)},1000)';
+      const url = URL.createObjectURL(new Blob([src], { type:'text/javascript' }));
+      tickWorker = new Worker(url);
+      tickWorker.onmessage = tick;
+      URL.revokeObjectURL(url);
+    } catch { tickWorker = null; }
+    if (!tickWorker) ticker = setInterval(tick, 1000);
+  }
+  function stopTicker() {
+    if (tickWorker) { tickWorker.terminate(); tickWorker = null; }
+    if (ticker) { clearInterval(ticker); ticker = null; }
+  }
+
+  /* ---------- 操作 ---------- */
+  async function start() {
+    if (running) return;
+    const name = el.user.value.trim();
+    if (!name) { setStatus('Scratchユーザー名を入力してください。', 'error'); el.user.focus(); return; }
+    prepareAudio();
+    store.set('scratchNotifierUser', name);
+    store.set('scratchNotifierInterval', el.interval.value);
+
+    if ('Notification' in window && Notification.permission === 'default') {
+      try { await Notification.requestPermission(); } catch { /* 無視 */ }
     }
-    if (!window.isSecureContext) {
-      setStatus('テスト通知にはHTTPSのページが必要です。GitHub Pagesのhttps://で開いてください。', 'error');
-      return;
-    }
-    let permission = Notification.permission;
-    if (permission === 'default') permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      notify('通知テスト', 'Chromeの通知が表示できています。');
-      setStatus('テスト通知を送信しました。', 'success');
-    } else {
-      setStatus('通知が許可されていません。Chromeのサイト設定から通知を許可してください。', 'error');
-    }
-  });
-  usernameInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') start(); });
+    renderPerm();
+    if (!window.isSecureContext) addLog('このページはHTTPSではないため、ブラウザ通知は使えません', 'error');
+
+    activeUser = name;
+    const saved = Number(store.get(countKey(name)));
+    lastCount = store.get(countKey(name)) !== null && Number.isFinite(saved) && saved >= 0 ? saved : null;
+    el.count.textContent = '…';
+    nextCheckAt = Date.now() + 999999999;
+    setRunning(true);
+    setStatus('Scratchの通知数を確認しています…');
+    startTicker();
+    runCheck();
+  }
+  function stop() {
+    stopTicker();
+    nextCheckAt = null;
+    setRunning(false);
+    el.next.textContent = '—';
+    setTitle(0);
+    setStatus('監視を停止しました。');
+    addLog('停止しました');
+  }
+  async function testNotify() {
+    prepareAudio();
+    if (!('Notification' in window)) { beep(); ringBell(); setStatus('このブラウザは通知に対応していません。音とベルの動きだけ確認しました。', 'error'); return; }
+    if (!window.isSecureContext) { setStatus('通知にはHTTPSのページが必要です。GitHub Pagesの https:// のURLで開いてください。', 'error'); return; }
+    if (Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
+    renderPerm();
+    if (Notification.permission !== 'granted') { setStatus('通知が許可されていません。アドレスバーの鍵アイコン → サイトの設定 → 通知を「許可」にしてください。', 'error'); return; }
+    const ok = await notify('通知テスト', 'この通知が見えていれば、設定は正しくできています。');
+    setStatus(ok ? 'テスト通知を送りました。表示されない場合は、OSの「おやすみモード」や集中モードを確認してください。' : 'テスト通知を表示できませんでした。ブラウザの通知設定を確認してください。', ok ? 'success' : 'error');
+  }
+
+  /* ---------- 初期化 ---------- */
+  el.start.addEventListener('click', start);
+  el.stop.addEventListener('click', stop);
+  el.test.addEventListener('click', testNotify);
+  el.user.addEventListener('keydown', (e) => { if (e.key === 'Enter') start(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+  window.addEventListener('online', tick);
+
+  const savedUser = store.get('scratchNotifierUser');
+  if (savedUser) el.user.value = savedUser;
+  const savedInterval = store.get('scratchNotifierInterval');
+  if (savedInterval && [...el.interval.options].some((o) => o.value === savedInterval)) el.interval.value = savedInterval;
+  renderPerm();
+  registerSW();
 })();
 </script>
 </body>
