@@ -127,6 +127,15 @@
   </section>
 
   <details>
+    <summary>うまく接続できないとき</summary>
+    <p>Scratchのサーバーは、他のサイトからの直接アクセスを断ることがあります。そのため、まず直接つなぎ、だめなら公開プロキシ(corsproxy.io / allorigins)を順に試します。ただし公開プロキシは不安定で、通知数が実際より少なく返ることもあります。</p>
+    <p>確実に動かしたい場合は、自分用の中継(Google Apps Scriptなど)のURLを下に入れてください。「URL?user=ユーザー名」で呼び出し、{"count":数字} を返すものを想定しています。</p>
+    <label for="customProxy">自分のプロキシURL（任意）</label>
+    <input id="customProxy" type="url" autocomplete="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+    <p></p>
+  </details>
+
+  <details>
     <summary>使い方と注意</summary>
     <p>Scratchの公開APIで、通知の「件数」だけを確認します。通知の本文・送信者・パスワードは取得しません。</p>
     <p>初回は現在の件数を基準にするので、すでにある通知では鳴りません。件数が増えたときだけ、ブラウザ通知とお知らせ音でお知らせします。</p>
@@ -144,7 +153,7 @@
   const el = {
     user:$('username'), interval:$('interval'), start:$('startBtn'), stop:$('stopBtn'), test:$('testBtn'),
     status:$('statusBox'), pill:$('pill'), pillText:$('pillText'), hero:$('hero'), bell:$('bell'),
-    count:$('count'), next:$('nextCheck'), perm:$('permLine'), log:$('log'), logEmpty:$('logEmpty')
+    custom:$('customProxy'), count:$('count'), next:$('nextCheck'), perm:$('permLine'), log:$('log'), logEmpty:$('logEmpty')
   };
   const BASE_TITLE = document.title;
   const MESSAGES_URL = 'https://scratch.mit.edu/messages/';
@@ -243,20 +252,38 @@
   }
 
   /* ---------- Scratch API ---------- */
+  // Scratch APIは他のサイト(GitHub Pagesなど)からの直接アクセスをCORSで拒否することがあるため、
+  // 直接 → 自分のプロキシ(設定時) → 公開CORSプロキシ の順に試し、成功した方法を覚える。
+  const API = (name) => `https://api.scratch.mit.edu/users/${encodeURIComponent(name)}/messages/count`;
+  let goodRoute = null;
+  function routes(name) {
+    const list = [];
+    const custom = el.custom.value.trim();
+    if (custom) list.push({ id:'自分のプロキシ', url:custom + (custom.includes('?') ? '&' : '?') + 'user=' + encodeURIComponent(name) });
+    list.push({ id:'直接', url:API(name) + '?t=' + Date.now() });
+    list.push({ id:'corsproxy.io', url:'https://corsproxy.io/?' + API(name) + '?t=' + Date.now() });
+    list.push({ id:'allorigins', url:'https://api.allorigins.win/raw?url=' + encodeURIComponent(API(name) + '?t=' + Date.now()) });
+    if (goodRoute) list.sort((x, y) => (y.id === goodRoute) - (x.id === goodRoute));
+    return list;
+  }
   async function fetchCount(name) {
-    // 余計なヘッダーやcacheオプションは付けない（CORSのプリフライトを避けるため）
-    const url = `https://api.scratch.mit.edu/users/${encodeURIComponent(name)}/messages/count?t=${Date.now()}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Scratch APIがHTTP ${res.status}を返しました`);
-    const data = await res.json();
-    const n = Number(data && data.count);
-    if (!Number.isFinite(n) || n < 0) throw new Error('通知数を読み取れませんでした。ユーザー名を確認してください');
-    return n;
+    const errors = [];
+    for (const r of routes(name)) {
+      try {
+        const res = await fetch(r.url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const n = Number(data && data.count);
+        if (!Number.isFinite(n) || n < 0) throw new Error('通知数を読み取れません');
+        goodRoute = r.id;
+        return { count:n, via:r.id };
+      } catch (err) {
+        errors.push(`${r.id}：${err instanceof TypeError ? '接続できません(CORSまたはネットワーク)' : err.message}`);
+      }
+    }
+    throw new Error(errors.join(' / '));
   }
-  function explain(err) {
-    if (err instanceof TypeError) return 'Scratchに接続できませんでした。ネットワークを確認し、広告ブロッカーなどが api.scratch.mit.edu を止めていないか確認してください';
-    return err.message;
-  }
+  function explain(err) { return err.message; }
 
   /* ---------- チェック本体 ---------- */
   async function runCheck() {
@@ -264,7 +291,7 @@
     inFlight = true;
     el.next.textContent = '確認中…';
     try {
-      const count = await fetchCount(activeUser);
+      const { count, via } = await fetchCount(activeUser);
       if (!running) return;
       const old = lastCount;
       lastCount = count;
@@ -274,7 +301,8 @@
 
       if (old === null) {
         setStatus(`監視を開始しました。いまの通知数は ${count} 件です。`, 'success');
-        addLog(`開始：${count}件`, 'success');
+        addLog(`開始：${count}件（経由：${via}）`, 'success');
+        if (count === 0 && via !== '直接') addLog('プロキシ経由では実際より少なく(0件と)返ることがあります', 'error');
       } else if (count > old) {
         const added = count - old;
         setStatus(`新しい通知が ${added} 件あります（合計 ${count} 件）。`, 'success');
@@ -330,6 +358,7 @@
     prepareAudio();
     store.set('scratchNotifierUser', name);
     store.set('scratchNotifierInterval', el.interval.value);
+    store.set('scratchNotifierProxy', el.custom.value.trim());
 
     if ('Notification' in window && Notification.permission === 'default') {
       try { await Notification.requestPermission(); } catch { /* 無視 */ }
@@ -377,6 +406,8 @@
 
   const savedUser = store.get('scratchNotifierUser');
   if (savedUser) el.user.value = savedUser;
+  const savedProxy = store.get('scratchNotifierProxy');
+  if (savedProxy) el.custom.value = savedProxy;
   const savedInterval = store.get('scratchNotifierInterval');
   if (savedInterval && [...el.interval.options].some((o) => o.value === savedInterval)) el.interval.value = savedInterval;
   renderPerm();
